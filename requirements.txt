@@ -1,0 +1,4 @@
+onnxruntime
+opencv-python-headless
+numpy
+huggingface-hub
