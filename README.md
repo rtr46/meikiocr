@@ -1,6 +1,7 @@
 # meikiocr
 
 [![license: apache 2.0](https://img.shields.io/badge/license-apache%202.0-blue.svg)](https://github.com/your-github-username/meikiocr/blob/main/license)
+[![hugging face space](https://img.shields.io/badge/%F0%9F%A4%97%20Hugging%20Face-space-blue)](https://huggingface.co/spaces/rtr46/meikiocr)
 [![detection model](https://img.shields.io/badge/hugging%20face-detection%20model-yellow)](https://huggingface.co/rtr46/meiki.text.detect.v0)
 [![recognition model](https://img.shields.io/badge/hugging%20face-recognition%20model-yellow)](https://huggingface.co/rtr46/meiki.txt.recognition.v0)
 
@@ -18,6 +19,14 @@ high-speed, high-accuracy, local ocr for japanese video games.
 こ、こんなにドキドキするの、
 小学校の学級裁判のとき以来です。
 ```
+
+---
+
+## live demo
+
+the easiest way to see `meikiocr` in action is to try the live demo hosted on hugging face spaces. no installation required!
+
+**[try the meikiocr live demo here](https://huggingface.co/spaces/rtr46/meikiocr)**
 
 ---
 
@@ -78,7 +87,7 @@ this will generate three output files in the same directory:
 
 ### adjusting thresholds
 
-you can adjust the confidence thresholds for both the text line detection and the character recognition models. lowering these values may help detect more text in challenging images.
+you can adjust the confidence thresholds for both the text line detection and the character recognition models. lowering the thresholds results in more detected text lines and characters, while higher values prevent false positives.
 
 ```bash
 # example with lower thresholds
