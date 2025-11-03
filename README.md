@@ -106,4 +106,4 @@ this opens the door for `meikiocr` to be integrated into a variety of projects.
 
 ## license
 
-this project is licensed under the apache 2.0 license. see the [license](license) file for details.
+this project is licensed under the apache 2.0 license. see the [license](LICENSE) file for details.
