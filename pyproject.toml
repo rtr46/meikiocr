@@ -1,0 +1,30 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "meikiocr"
+version = "0.1.0"
+authors = [
+  { name="rtr46" },
+]
+description = "High-speed, high-accuracy, local OCR for Japanese video games."
+readme = "README.md"
+license = "Apache-2.0"
+requires-python = ">=3.8"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "Operating System :: OS Independent",
+    "Topic :: Scientific/Engineering :: Image Recognition",
+]
+dependencies = [
+    "numpy",
+    "opencv-python-headless",
+    "huggingface-hub",
+	"onnxruntime"
+]
+
+[project.urls]
+Homepage = "https://github.com/rtr46/meikiocr"
+"Bug Tracker" = "https://github.com/rtr46/meikiocr/issues"
+"Hugging Face" = "https://huggingface.co/spaces/rtr46/meikiocr"
