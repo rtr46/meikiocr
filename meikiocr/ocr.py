@@ -4,20 +4,7 @@ import os
 import cv2
 import numpy as np
 from huggingface_hub import hf_hub_download
-
-try:
-    import onnxruntime as ort
-except ImportError:
-    raise ImportError(
-        "\n\nERROR: ONNX Runtime is not installed. meikiocr requires this dependency."
-        "\nPlease install it by choosing one of the following commands based on your hardware:\n\n"
-        "1. For CPU-only usage:\n"
-        "   pip install meikiocr[cpu]\n\n"
-        "2. For NVIDIA GPU usage (recommended for high performance):\n"
-        "   pip install meikiocr[gpu]\n\n"
-        "Note: If you are switching from CPU to GPU, make sure to run "
-        "`pip uninstall onnxruntime` first before installing the GPU version."
-    )
+import onnxruntime as ort
 
 # --- configuration ---
 DET_MODEL_REPO = "rtr46/meiki.text.detect.v0"
