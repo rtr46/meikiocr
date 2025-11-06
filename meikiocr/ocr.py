@@ -213,9 +213,12 @@ class MeikiOCR:
             
             candidates = []
             for lbl, box, scr in zip(labels, boxes, scores):
-                if scr < rec_conf_threshold: continue
+                if scr < rec_conf_threshold:
+                    continue
                 char = chr(lbl)
                 rx1, ry1, rx2, ry2 = box
+                if rx1 >= effective_w:
+                    continue
                 rx1, rx2 = min(rx1, effective_w), min(rx2, effective_w)
                 
                 cx1, cx2 = (rx1 / effective_w) * crop_w, (rx2 / effective_w) * crop_w
