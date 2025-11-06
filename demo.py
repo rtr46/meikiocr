@@ -4,12 +4,15 @@ from urllib.request import urlopen
 from meikiocr import MeikiOCR
 
 # --- 1. Load Assets ---
+# load from url...
 IMAGE_URL = "https://huggingface.co/spaces/rtr46/meikiocr/resolve/main/example.jpg"
-
 print(f"--- Downloading sample image from {IMAGE_URL} ---")
 with urlopen(IMAGE_URL) as resp:
     image_bytes = np.asarray(bytearray(resp.read()), dtype="uint8") # Read image data into a buffer
-    image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)              # Decode buffer into an OpenCV image
+    image = cv2.imdecode(image_bytes, cv2.IMREAD_COLOR)             # Decode buffer into an OpenCV image
+
+# ... or load from disk
+# image = cv2.imread("my_input_image.jpg", cv2.IMREAD_COLOR)
 
 print("--- Initializing MeikiOCR (models will be downloaded on first run) ---")
 ocr = MeikiOCR() # Initialize the OCR pipeline
