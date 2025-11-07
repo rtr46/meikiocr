@@ -29,7 +29,7 @@ def _get_model_path(repo_id, filename):
         raise
 
 class MeikiOCR:
-    def __init__(self, provider=None):
+    def __init__(self, provider=None, max_batch_size=8):
         """
         Initializes the meikiocr pipeline by loading detection and recognition models.
 
@@ -38,6 +38,8 @@ class MeikiOCR:
                                       Defaults to None, which lets ONNX Runtime choose.
                                       Recommended: 'CUDAExecutionProvider' for NVIDIA GPUs,
                                       'CPUExecutionProvider' for CPU.
+            max_batch_size (int, optional): The maximum batch size for the recognition model
+                                            to control memory usage. Defaults to 8.
         """
         ort.set_default_logger_severity(3)
         
@@ -58,7 +60,8 @@ class MeikiOCR:
         self.rec_session = ort.InferenceSession(rec_model_path, providers=chosen_providers)
         
         self.active_provider = self.det_session.get_providers()[0]
-        print(f"--- meikiocr running on: {self.active_provider} ---")
+        self.max_batch_size = max_batch_size
+        print(f"--- meikiocr running on: {self.active_provider}; max_batch_size = {self.max_batch_size} ---")
 
     def run_ocr(self, image, det_threshold=0.5, rec_threshold=0.1):
         """
@@ -84,9 +87,21 @@ class MeikiOCR:
         if rec_batch is None:
             return [{'text': '', 'chars': []} for _ in range(len(text_boxes))]
 
-        rec_raw = self._run_recognition_inference(rec_batch)
-        results = self._postprocess_recognition_results(rec_raw, valid_indices, crop_metadata, rec_threshold, len(text_boxes))
-        
+        # Process the recognition in smaller batches to control memory usage
+        all_labels_chunks, all_boxes_chunks, all_scores_chunks = [], [], []
+        for i in range(0, len(rec_batch), self.max_batch_size):
+            batch_chunk = rec_batch[i:i + self.max_batch_size]
+            labels_chunk, boxes_chunk, scores_chunk = self._run_recognition_inference(batch_chunk)
+            all_labels_chunks.append(labels_chunk)
+            all_boxes_chunks.append(boxes_chunk)
+            all_scores_chunks.append(scores_chunk)
+
+        all_rec_raw = (
+            np.concatenate(all_labels_chunks, axis=0),
+            np.concatenate(all_boxes_chunks, axis=0),
+            np.concatenate(all_scores_chunks, axis=0)
+        )
+        results = self._postprocess_recognition_results(all_rec_raw, valid_indices, crop_metadata, rec_threshold, len(text_boxes))
         return results
 
     def run_detection(self, image, conf_threshold=0.5):
@@ -118,7 +133,10 @@ class MeikiOCR:
         Returns:
             list[dict]: A list of recognition results, one for each input image.
         """
-        # This method requires creating dummy text_boxes to fit the existing pipeline
+        if not text_line_images:
+            return []
+
+        # Create dummy text_boxes to fit the existing pipeline.
         text_boxes = [{'bbox': [0, 0, img.shape[1], img.shape[0]]} for img in text_line_images]
         
         # We need to process each image as if it were a crop from a larger canvas.
@@ -234,15 +252,22 @@ class MeikiOCR:
 
             candidates.sort(key=lambda c: c['conf'], reverse=True)
             accepted = []
+            accepted_intervals = []
             for cand in candidates:
                 x1_c, x2_c = cand['x_interval']
                 width_c = x2_c - x1_c + EPSILON
-                is_overlap = any(
-                    (max(0, min(x2_c, x2_a) - max(x1_c, x1_a)) / width_c) > X_OVERLAP_THRESHOLD
-                    for x1_a, x2_a in (acc['x_interval'] for acc in accepted)
-                )
+                is_overlap = False
+
+                for x1_a, x2_a in accepted_intervals:
+                    if (x1_c >= x2_a) or (x1_a >= x2_c):
+                        continue
+                    if ((min(x2_c, x2_a) - max(x1_c, x1_a)) / width_c) > X_OVERLAP_THRESHOLD:
+                        is_overlap = True
+                        break
+
                 if not is_overlap:
                     accepted.append(cand)
+                    accepted_intervals.append(cand['x_interval'])
 
             accepted.sort(key=lambda c: c['x_interval'][0])
             text = ''.join(c['char'] for c in accepted)
