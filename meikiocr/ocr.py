@@ -5,6 +5,10 @@ import cv2
 import numpy as np
 from huggingface_hub import hf_hub_download
 import onnxruntime as ort
+import logging
+
+logger = logging.getLogger(__name__)
+logger.addHandler(logging.NullHandler())
 
 # --- configuration ---
 DET_MODEL_REPO = "rtr46/meiki.text.detect.v0"
@@ -61,7 +65,7 @@ class MeikiOCR:
         
         self.active_provider = self.det_session.get_providers()[0]
         self.max_batch_size = max_batch_size
-        print(f"--- meikiocr running on: {self.active_provider}; max_batch_size = {self.max_batch_size} ---")
+        logger.info(f"meikiocr running on: {self.active_provider}; max_batch_size = {self.max_batch_size}")
 
     def run_ocr(self, image, det_threshold=0.5, rec_threshold=0.1):
         """
