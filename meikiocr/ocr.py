@@ -6,6 +6,7 @@ import numpy as np
 from huggingface_hub import hf_hub_download
 import onnxruntime as ort
 import logging
+import unicodedata
 
 logger = logging.getLogger(__name__)
 logger.addHandler(logging.NullHandler())
@@ -24,6 +25,7 @@ INPUT_REC_WIDTH = 960
 X_OVERLAP_THRESHOLD = 0.3
 EPSILON = 1e-6
 
+
 def _get_model_path(repo_id, filename):
     """Downloads a model from the hugging face hub if not cached and returns the path."""
     try:
@@ -31,6 +33,7 @@ def _get_model_path(repo_id, filename):
     except Exception as e:
         print(f"Error downloading model {filename}: {e}")
         raise
+
 
 class MeikiOCR:
     def __init__(self, provider=None, max_batch_size=8):
@@ -67,7 +70,7 @@ class MeikiOCR:
         self.max_batch_size = max_batch_size
         logger.info(f"meikiocr running on: {self.active_provider}; max_batch_size = {self.max_batch_size}")
 
-    def run_ocr(self, image, det_threshold=0.5, rec_threshold=0.1):
+    def run_ocr(self, image, det_threshold=0.5, rec_threshold=0.1, punct_conf_factor=1.0):
         """
         Runs the full OCR pipeline on a given image.
 
@@ -75,6 +78,8 @@ class MeikiOCR:
             image (np.ndarray): The input image in OpenCV format (BGR, HxWxC).
             det_threshold (float): Confidence threshold for text detection.
             rec_threshold (float): Confidence threshold for character recognition.
+            punct_conf_factor (float): Confidence factor for punctuation characters.
+                                       Values < 1.0 allow overlapping non-punctuation text to take precedence.
 
         Returns:
             list[dict]: A list of dictionaries, where each dictionary contains the
@@ -105,7 +110,14 @@ class MeikiOCR:
             np.concatenate(all_boxes_chunks, axis=0),
             np.concatenate(all_scores_chunks, axis=0)
         )
-        results = self._postprocess_recognition_results(all_rec_raw, valid_indices, crop_metadata, rec_threshold, len(text_boxes))
+        results = self._postprocess_recognition_results(
+            all_rec_raw,
+            valid_indices,
+            crop_metadata,
+            rec_threshold,
+            len(text_boxes),
+            punct_conf_factor
+        )
         return results
 
     def run_detection(self, image, conf_threshold=0.5):
@@ -125,7 +137,7 @@ class MeikiOCR:
         text_boxes = self._postprocess_detection_results(det_raw, image, conf_threshold)
         return text_boxes
 
-    def run_recognition(self, text_line_images, conf_threshold=0.1):
+    def run_recognition(self, text_line_images, conf_threshold=0.1, punct_conf_factor=1.0):
         """
         Runs only the text recognition part of the pipeline on a batch of text line images.
         Note: This is an advanced method. `run_ocr` is recommended for general use.
@@ -133,6 +145,8 @@ class MeikiOCR:
         Args:
             text_line_images (list[np.ndarray]): A list of cropped text line images (BGR, HxWxC).
             conf_threshold (float): Confidence threshold for character recognition.
+            punct_conf_factor (float): Confidence factor for punctuation characters.
+                                       Values < 1.0 allow overlapping non-punctuation text to take precedence.
 
         Returns:
             list[dict]: A list of recognition results, one for each input image.
@@ -152,7 +166,14 @@ class MeikiOCR:
                 results.append({'text': '', 'chars': []})
                 continue
             rec_raw = self._run_recognition_inference(rec_batch)
-            result = self._postprocess_recognition_results(rec_raw, valid_indices, crop_metadata, conf_threshold, 1)
+            result = self._postprocess_recognition_results(
+                rec_raw,
+                valid_indices,
+                crop_metadata,
+                conf_threshold,
+                1,
+                punct_conf_factor
+            )
             results.extend(result)
             
         return results
@@ -223,7 +244,8 @@ class MeikiOCR:
         orig_size = np.array([[INPUT_REC_WIDTH, INPUT_REC_HEIGHT]], dtype=np.int64)
         return self.rec_session.run(None, {"images": batch_tensor, "orig_target_sizes": orig_size})
 
-    def _postprocess_recognition_results(self, raw_rec_outputs, valid_indices, crop_metadata, rec_conf_threshold, num_total_boxes):
+    def _postprocess_recognition_results(self, raw_rec_outputs, valid_indices, crop_metadata, rec_conf_threshold,
+                                         num_total_boxes, punct_conf_factor):
         labels_batch, boxes_batch, scores_batch = raw_rec_outputs
         full_results = [{'text': '', 'chars': []} for _ in range(num_total_boxes)]
 
@@ -253,6 +275,11 @@ class MeikiOCR:
                     'char': char, 'bbox': [gx1_char, gy1_char, gx2_char, gy2_char],
                     'conf': float(scr), 'x_interval': (gx1_char, gx2_char)
                 })
+
+            if punct_conf_factor != 1.0:
+                for cand in candidates:
+                    if unicodedata.category(cand['char']).startswith('P'):
+                        cand['conf'] *= punct_conf_factor
 
             candidates.sort(key=lambda c: c['conf'], reverse=True)
             accepted = []
