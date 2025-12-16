@@ -19,7 +19,7 @@ ocr = MeikiOCR() # Initialize the OCR pipeline
 
 # --- 2. Run OCR ---
 print("--- Running OCR on the image ---")
-results = ocr.run_ocr(image) # Run the full OCR pipeline
+results = ocr.run_ocr(image, punct_conf_factor=0.2) # Run the full OCR pipeline
 
 # --- 3. Display and Save Results ---
 print("\n--- Recognized Text ---")
