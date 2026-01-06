@@ -71,22 +71,22 @@ pip install onnxruntime-gpu
 after installation, you can use the `meikiocr` tool directly from your terminal.
 
 ```bash
-meikiocr shot.png
+meikiocr image.png
 ```
 
 ### options
 
 *   **save visualization:** draw bounding boxes and save the result to a file.
     ```bash
-    meikiocr shot.png --output result.jpg
+    meikiocr image.png --output result.jpg
     ```
 *   **json output:** get detailed results (coordinates, confidence scores) for integration with other scripts.
     ```bash
-    meikiocr shot.png --json
+    meikiocr image.png --json
     ```
 *   **adjust thresholds:** fine-tune detection and recognition sensitivity.
     ```bash
-    meikiocr shot.png --det-threshold 0.6 --rec-threshold 0.2
+    meikiocr image.png --det-threshold 0.6 --rec-threshold 0.2
     ```
 
 run `meikiocr --help` for a full list of available options.
