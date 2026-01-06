@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meikiocr"
-version = "0.1.4"
+version = "0.2.0"
 authors = [
   { name="rtr46" },
 ]
@@ -28,3 +28,7 @@ dependencies = [
 Homepage = "https://github.com/rtr46/meikiocr"
 "Bug Tracker" = "https://github.com/rtr46/meikiocr/issues"
 "Hugging Face" = "https://huggingface.co/spaces/rtr46/meikiocr"
+
+
+[project.scripts]
+meikiocr = "meikiocr.cli:main"
