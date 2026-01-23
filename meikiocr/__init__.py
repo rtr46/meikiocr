@@ -1,5 +1,5 @@
 # ./meikiocr/__init__.py
 
-from .ocr import MeikiOCR
+from .ocr import MeikiOCR, LANGUAGE_MODELS
 
-__version__ = "0.2.0"
+__version__ = "0.3.0"

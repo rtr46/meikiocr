@@ -10,7 +10,7 @@ from . import __version__
 
 def main():
     parser = argparse.ArgumentParser(
-        description="High-speed, high-accuracy, local OCR for Japanese video games."
+        description="High-speed, high-accuracy, local OCR for video games. Supports multiple languages."
     )
     
     # Positional argument: Input image
@@ -22,6 +22,8 @@ def main():
     parser.add_argument("--det-threshold", type=float, default=0.5, help="Confidence threshold for text detection (default: 0.5).")
     parser.add_argument("--rec-threshold", type=float, default=0.1, help="Confidence threshold for character recognition (default: 0.1).")
     parser.add_argument("--punct-factor", type=float, default=1.0, help="Confidence factor for punctuation (default: 1.0).")
+    parser.add_argument("--language", "-l", type=str, default="ja", 
+                        help="Recognition language (default: ja). Supported: ja, en, pt, es, fr, de, it, nl, pl, tr, latin, zh, ko, ru, uk, cyrillic, th, el.")
     parser.add_argument("--provider", type=str, default=None, help="ONNX Runtime provider (e.g., 'CUDAExecutionProvider', 'CPUExecutionProvider').")
     parser.add_argument("--version", action="version", version=f"%(prog)s {__version__}")
 
@@ -40,7 +42,7 @@ def main():
 
     # Initialize OCR
     try:
-        ocr = MeikiOCR(provider=args.provider)
+        ocr = MeikiOCR(language=args.language, provider=args.provider)
     except Exception as e:
         print(f"Error initializing MeikiOCR: {e}", file=sys.stderr)
         sys.exit(1)
