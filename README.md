@@ -5,9 +5,9 @@
 [![detection model](https://img.shields.io/badge/hugging%20face-detection%20model-yellow)](https://huggingface.co/rtr46/meiki.text.detect.v0)
 [![recognition model](https://img.shields.io/badge/hugging%20face-recognition%20model-yellow)](https://huggingface.co/rtr46/meiki.txt.recognition.v0)
 
-high-speed, high-accuracy, local ocr for japanese video games.
+high-speed, high-accuracy, local ocr for video games.
 
-`meikiocr` is a python-based ocr pipeline that combines state-of-the-art detection and recognition models to provide an unparalleled open-source solution for extracting japanese text from video games and similar rendered content.
+`meikiocr` is a python-based ocr pipeline that combines state-of-the-art detection and recognition models to provide an unparalleled open-source solution for extracting text from video games and similar rendered content. supports **japanese** (native, character-level detection) and **17+ other languages** via paddleocr onnx models.
 
 | original image | ocr result |
 | :---: | :---: |
@@ -76,6 +76,12 @@ meikiocr image.png
 
 ### options
 
+*   **language selection:** specify the recognition language (default: japanese).
+    ```bash
+    meikiocr image.png --language en    # english
+    meikiocr image.png -l pt             # portuguese
+    meikiocr image.png -l zh             # chinese
+    ```
 *   **save visualization:** draw bounding boxes and save the result to a file.
     ```bash
     meikiocr image.png --output result.jpg
@@ -107,10 +113,14 @@ IMAGE_URL = "https://huggingface.co/spaces/rtr46/meikiocr/resolve/main/example.j
 with urlopen(IMAGE_URL) as resp:
     image = cv2.imdecode(np.asarray(bytearray(resp.read()), dtype="uint8"), cv2.IMREAD_COLOR)
 
-ocr = MeikiOCR() # Initialize the OCR pipeline
-results = ocr.run_ocr(image) # Run the full OCR pipeline
+ocr = MeikiOCR()  # Japanese (default)
+results = ocr.run_ocr(image)
 print('\n'.join([line['text'] for line in results if line['text']]))
 
+# For other languages:
+ocr_en = MeikiOCR(language="en")  # English
+ocr_pt = MeikiOCR(language="pt")  # Portuguese (uses Latin model)
+ocr_zh = MeikiOCR(language="zh")  # Chinese
 ```
 
 ### adjusting thresholds
@@ -132,8 +142,23 @@ in the same way you can also run_recognition by itself on images of precropped (
 ## how it works
 
 `meikiocr` is a two-stage pipeline:
-1.  **text detection:** the [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) model first identifies the bounding boxes of all horizontal text lines in the image.
-2.  **text recognition:** each detected text line is then cropped and processed in a batch by the [meiki.text.recognition.v0](https://huggingface.co/rtr46/meiki.txt.recognition.v0) model, which recognizes the individual characters within it.
+1.  **text detection:** the [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) model identifies bounding boxes of all horizontal text lines. this model is language-agnostic and works for any language.
+2.  **text recognition:** each detected text line is cropped and processed by a recognition model:
+    - **japanese:** uses [meiki.text.recognition.v0](https://huggingface.co/rtr46/meiki.txt.recognition.v0) with character-level detection
+    - **other languages:** uses [paddleocr onnx models](https://huggingface.co/monkt/paddleocr-onnx) with ctc-based recognition
+
+## supported languages
+
+| code | language/script | model | char-level bboxes |
+|------|-----------------|-------|-------------------|
+| `ja` | japanese | native meikiocr | ✅ yes |
+| `en` | english | paddleocr | ❌ no |
+| `pt`, `es`, `fr`, `de`, `it`, `nl`, `pl`, `tr`, `latin` | latin script (32 langs) | paddleocr | ❌ no |
+| `zh` | chinese | paddleocr | ❌ no |
+| `ko` | korean | paddleocr | ❌ no |
+| `ru`, `uk`, `cyrillic` | cyrillic | paddleocr | ❌ no |
+| `th` | thai | paddleocr | ❌ no |
+| `el` | greek | paddleocr | ❌ no |
 
 ## limitations
 
