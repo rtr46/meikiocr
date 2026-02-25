@@ -125,22 +125,22 @@ MeikiOCR().run_ocr(self, image, det_threshold=0.8, rec_threshold=0.2) # less, bu
 
 if you only care about the position of the text and not the content you can run the detection by itself, which is faster than running the whole ocr pipeline:
 ```python
-MeikiOCR().run_detection(self, image, det_threshold=0.8, rec_threshold=0.2) # only returns text line coordinates (for horizontal and vertical text lines)
+MeikiOCR().run_detection(self, image, det_threshold=0.8, rec_threshold=0.2) # only returns text line coordinates
 ```
-in the same way you can also run_recognition by itself on images of precropped (horizontal) text lines.
+in the same way you can also run_recognition by itself on images of precropped text lines.
 
 ## how it works
 
 `meikiocr` is a two-stage pipeline:
-1.  **text detection:** the [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) model first identifies the bounding boxes of all horizontal text lines in the image.
+1.  **text detection:** the [meiki.text.detect.v0](https://huggingface.co/rtr46/meiki.text.detect.v0) model first identifies the bounding boxes of all text lines in the image.
 2.  **text recognition:** each detected text line is then cropped and processed in a batch by the [meiki.text.recognition.v0](https://huggingface.co/rtr46/meiki.txt.recognition.v0) model, which recognizes the individual characters within it.
 
 ## limitations
 
 while `meikiocr` is state-of-the-art for its niche, it's important to understand its design constraints:
 *   **domain specific:** it is highly optimized for rendered text from video games and may not perform well on handwritten or complex real-world scene text.
-*   **horizontal text only:** it does not currently support vertical text.
 *   **architectural limits:** the detection model is capped at finding 64 text boxes, and the recognition model can process up to 48 characters per line. these limits are sufficient for over 99% of video game scenarios but may be a constraint for other use cases.
+*   **vertical text line accuracy:** vertical text line support is in beta. it should work, but dont expect the same level of accuracy as on horizontal lines.
 
 ## advanced usage & potential
 
