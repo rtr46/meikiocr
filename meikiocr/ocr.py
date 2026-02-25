@@ -28,7 +28,7 @@ INPUT_REC_WIDTH = 960
 # Vertical Recognition Dims
 INPUT_VREC_WIDTH = 32
 INPUT_VREC_HEIGHT = 480
-VREC_MAX_CONTENT_HEIGHT = 448  # Height of segments when a split is forced
+VREC_MAX_CONTENT_HEIGHT = 420  # Height of segments when a split is forced
 VREC_OVERLAP_PX = 64  # Overlap strictly by 64px in the scaled space
 
 X_OVERLAP_THRESHOLD = 0.3
