@@ -103,7 +103,7 @@ class MeikiOCR:
         if not text_boxes:
             return []
 
-        results = [{'text': '', 'chars': []} for _ in range(len(text_boxes))]
+        results = [{'text': '', 'chars': [], 'orientation': ''} for _ in range(len(text_boxes))]
 
         h_indices = []
         v_indices = []
@@ -167,7 +167,7 @@ class MeikiOCR:
             return []
 
         text_boxes = [{'bbox': [0, 0, img.shape[1], img.shape[0]]} for img in text_line_images]
-        results = [{'text': '', 'chars': []} for _ in range(len(text_line_images))]
+        results = [{'text': '', 'chars': [], 'orientation': ''} for _ in range(len(text_line_images))]
 
         for i, image in enumerate(text_line_images):
             h, w = image.shape[:2]
@@ -180,7 +180,7 @@ class MeikiOCR:
                 continue
 
             rec_raw = self._run_recognition_inference(rec_batch, mode)
-            temp_results = [{'text': '', 'chars': []}]
+            temp_results = [{'text': '', 'chars': [], 'orientation': ''}]
             self._postprocess_recognition_results(
                 rec_raw, valid_indices, crop_metadata, conf_threshold, temp_results, punct_conf_factor, mode
             )
@@ -459,4 +459,4 @@ class MeikiOCR:
             text = ''.join(c['char'] for c in result_chars)
 
             logger.debug(f"--- FINAL TEXT BOX {orig_idx}: {text} ---")
-            results[orig_idx] = {'text': text, 'chars': result_chars}
+            results[orig_idx] = {'text': text, 'chars': result_chars, 'orientation': mode}
