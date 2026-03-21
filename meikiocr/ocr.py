@@ -103,7 +103,7 @@ class MeikiOCR:
         if not text_boxes:
             return []
 
-        results = [{'text': '', 'chars': []} for _ in range(len(text_boxes))]
+        results = [{'text': '', 'chars': [], 'is_vertical': False} for _ in range(len(text_boxes))]
 
         h_indices = []
         v_indices = []
@@ -121,13 +121,13 @@ class MeikiOCR:
         if h_indices:
             logger.debug(f"Processing {len(h_indices)} horizontal boxes.")
             self._process_recognition_pipeline(
-                image, text_boxes, h_indices, results, rec_threshold, punct_conf_factor, 'horizontal'
+                image, text_boxes, h_indices, results, rec_threshold, punct_conf_factor, False
             )
 
         if v_indices:
             logger.debug(f"Processing {len(v_indices)} vertical boxes.")
             self._process_recognition_pipeline(
-                image, text_boxes, v_indices, results, rec_threshold, punct_conf_factor, 'vertical'
+                image, text_boxes, v_indices, results, rec_threshold, punct_conf_factor, True
             )
 
         return results
@@ -167,22 +167,22 @@ class MeikiOCR:
             return []
 
         text_boxes = [{'bbox': [0, 0, img.shape[1], img.shape[0]]} for img in text_line_images]
-        results = [{'text': '', 'chars': []} for _ in range(len(text_line_images))]
+        results = [{'text': '', 'chars': [], 'is_vertical': False} for _ in range(len(text_line_images))]
 
         for i, image in enumerate(text_line_images):
             h, w = image.shape[:2]
-            mode = 'vertical' if h > w else 'horizontal'
+            is_vertical = h > w
 
             rec_batch, valid_indices, crop_metadata = self._preprocess_for_recognition(
-                image, [text_boxes[i]], [0], mode
+                image, [text_boxes[i]], [0], is_vertical
             )
             if rec_batch is None:
                 continue
 
-            rec_raw = self._run_recognition_inference(rec_batch, mode)
-            temp_results = [{'text': '', 'chars': []}]
+            rec_raw = self._run_recognition_inference(rec_batch, is_vertical)
+            temp_results = [{'text': '', 'chars': [], 'is_vertical': False}]
             self._postprocess_recognition_results(
-                rec_raw, valid_indices, crop_metadata, conf_threshold, temp_results, punct_conf_factor, mode
+                rec_raw, valid_indices, crop_metadata, conf_threshold, temp_results, punct_conf_factor, is_vertical
             )
             results[i] = temp_results[0]
 
@@ -222,8 +222,8 @@ class MeikiOCR:
         text_boxes.sort(key=lambda tb: tb['bbox'][1])
         return text_boxes
 
-    def _process_recognition_pipeline(self, image, text_boxes, indices, results, rec_threshold, punct_conf_factor, mode):
-        rec_batch, valid_indices, crop_metadata = self._preprocess_for_recognition(image, text_boxes, indices, mode)
+    def _process_recognition_pipeline(self, image, text_boxes, indices, results, rec_threshold, punct_conf_factor, is_vertical):
+        rec_batch, valid_indices, crop_metadata = self._preprocess_for_recognition(image, text_boxes, indices, is_vertical)
 
         if rec_batch is None:
             return
@@ -231,7 +231,7 @@ class MeikiOCR:
         all_labels_chunks, all_boxes_chunks, all_scores_chunks = [], [], []
         for i in range(0, len(rec_batch), self.max_batch_size):
             batch_chunk = rec_batch[i:i + self.max_batch_size]
-            labels_chunk, boxes_chunk, scores_chunk = self._run_recognition_inference(batch_chunk, mode)
+            labels_chunk, boxes_chunk, scores_chunk = self._run_recognition_inference(batch_chunk, is_vertical)
             all_labels_chunks.append(labels_chunk)
             all_boxes_chunks.append(boxes_chunk)
             all_scores_chunks.append(scores_chunk)
@@ -242,10 +242,10 @@ class MeikiOCR:
             np.concatenate(all_scores_chunks, axis=0)
         )
         self._postprocess_recognition_results(
-            all_rec_raw, valid_indices, crop_metadata, rec_threshold, results, punct_conf_factor, mode
+            all_rec_raw, valid_indices, crop_metadata, rec_threshold, results, punct_conf_factor, is_vertical
         )
 
-    def _preprocess_for_recognition(self, image, text_boxes, indices, mode):
+    def _preprocess_for_recognition(self, image, text_boxes, indices, is_vertical):
         tensors, valid_indices, crop_metadata = [], [], []
 
         for i in indices:
@@ -257,7 +257,7 @@ class MeikiOCR:
 
             h, w = crop.shape[:2]
 
-            if mode == 'horizontal':
+            if not is_vertical:
                 new_h = INPUT_REC_HEIGHT
                 scale = new_h / h
                 new_w = int(round(w * scale))
@@ -276,7 +276,7 @@ class MeikiOCR:
                 valid_indices.append(i)
                 crop_metadata.append({'orig_bbox': [x1, y1, x2, y2], 'effective_w': new_w, 'effective_h': new_h})
 
-            else:  # mode == 'vertical'
+            else:  # vertical
                 scale = INPUT_VREC_WIDTH / w
                 h_scaled_full = h * scale
 
@@ -337,9 +337,9 @@ class MeikiOCR:
         if not tensors: return None, [], []
         return np.stack(tensors, axis=0), valid_indices, crop_metadata
 
-    def _run_recognition_inference(self, batch_tensor, mode):
+    def _run_recognition_inference(self, batch_tensor, is_vertical):
         if batch_tensor is None: return []
-        if mode == 'horizontal':
+        if not is_vertical:
             orig_size = np.array([[INPUT_REC_WIDTH, INPUT_REC_HEIGHT]], dtype=np.int64)
             return self.rec_session.run(None, {"images": batch_tensor, "orig_target_sizes": orig_size})
         else:
@@ -347,7 +347,7 @@ class MeikiOCR:
             return self.vrec_session.run(None, {"images": batch_tensor, "orig_target_sizes": orig_size})
 
     def _postprocess_recognition_results(self, raw_rec_outputs, valid_indices, crop_metadata, rec_conf_threshold,
-                                         results, punct_conf_factor, mode):
+                                         results, punct_conf_factor, is_vertical):
         labels_batch, boxes_batch, scores_batch = raw_rec_outputs
         candidates_by_idx = {}
 
@@ -369,7 +369,7 @@ class MeikiOCR:
                 char = chr(lbl)
                 rx1, ry1, rx2, ry2 = box
 
-                if mode == 'horizontal':
+                if not is_vertical:
                     effective_w = meta['effective_w']
                     if rx1 >= effective_w:
                         continue
@@ -385,7 +385,7 @@ class MeikiOCR:
                         'char': char, 'bbox': [gx1_char, gy1_char, gx2_char, gy2_char],
                         'conf': float(scr), 'interval': (gx1_char, gx2_char)
                     })
-                else:  # mode == 'vertical'
+                else:  # vertical
                     effective_h = meta['effective_h']
 
                     if ry1 >= effective_h:
@@ -410,7 +410,7 @@ class MeikiOCR:
                         'conf': float(scr), 'interval': (gy1_char, gy2_char)
                     })
 
-        overlap_threshold = X_OVERLAP_THRESHOLD if mode == 'horizontal' else Y_OVERLAP_THRESHOLD
+        overlap_threshold = X_OVERLAP_THRESHOLD if not is_vertical else Y_OVERLAP_THRESHOLD
 
         for orig_idx, candidates in candidates_by_idx.items():
             logger.debug(f"--- Running NMS on Combined Candidates for Box {orig_idx} ---")
@@ -459,4 +459,4 @@ class MeikiOCR:
             text = ''.join(c['char'] for c in result_chars)
 
             logger.debug(f"--- FINAL TEXT BOX {orig_idx}: {text} ---")
-            results[orig_idx] = {'text': text, 'chars': result_chars}
+            results[orig_idx] = {'text': text, 'chars': result_chars, 'is_vertical': is_vertical}
