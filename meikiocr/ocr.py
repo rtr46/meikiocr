@@ -35,6 +35,16 @@ X_OVERLAP_THRESHOLD = 0.3
 Y_OVERLAP_THRESHOLD = 0.3
 EPSILON = 1e-6
 
+SWAPPED_PAIRS = {
+    "儡傀": "傀儡",
+    "談冗": "冗談",
+    "汰淘": "淘汰",
+    "沱滂": "滂沱",
+    "攣痙": "痙攣",
+    "酊酩": "酩酊",
+    "麭麺": "麺麭",
+    "哭慟": "慟哭",
+}
 
 def _get_model_path(repo_id, filename):
     try:
@@ -457,6 +467,15 @@ class MeikiOCR:
 
             result_chars = [{'char': c['char'], 'bbox': c['bbox'], 'conf': c['conf']} for c in accepted]
             text = ''.join(c['char'] for c in result_chars)
+            text, result_chars = self._fix_swapped_pairs(text, result_chars)
 
             logger.debug(f"--- FINAL TEXT BOX {orig_idx}: {text} ---")
             results[orig_idx] = {'text': text, 'chars': result_chars, 'is_vertical': is_vertical}
+
+    def _fix_swapped_pairs(self, text, chars):
+        for wrong, correct in SWAPPED_PAIRS.items():
+            idx = text.find(wrong)
+            if idx != -1 and idx + 1 < len(chars):
+                text = text[:idx] + correct + text[idx + 2:]
+                chars[idx]['char'], chars[idx + 1]['char'] = chars[idx + 1]['char'], chars[idx]['char']
+        return text, chars
