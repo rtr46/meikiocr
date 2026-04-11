@@ -83,9 +83,14 @@ class MeikiOCR:
         else:
             chosen_providers = available_providers
 
-        self.det_session = ort.InferenceSession(det_model_path, providers=chosen_providers)
-        self.rec_session = ort.InferenceSession(rec_model_path, providers=chosen_providers)
-        self.vrec_session = ort.InferenceSession(vrec_model_path, providers=chosen_providers)
+        sess_opts = ort.SessionOptions()
+        sess_opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
+        sess_opts.add_session_config_entry("session.intra_op.allow_spinning", "0")
+        sess_opts.add_session_config_entry("session.inter_op.allow_spinning", "0")
+
+        self.det_session = ort.InferenceSession(det_model_path, sess_options=sess_opts, providers=chosen_providers)
+        self.rec_session = ort.InferenceSession(rec_model_path, sess_options=sess_opts, providers=chosen_providers)
+        self.vrec_session = ort.InferenceSession(vrec_model_path, sess_options=sess_opts, providers=chosen_providers)
 
         self.active_provider = self.det_session.get_providers()[0]
         self.max_batch_size = max_batch_size
