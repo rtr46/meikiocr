@@ -48,6 +48,11 @@ SWAPPED_PAIRS = {
 
 def _get_model_path(repo_id, filename):
     try:
+        return hf_hub_download(repo_id=repo_id, filename=filename, local_files_only=True)
+    except Exception:
+        logger.warning(f"Error loading model {filename} from local cache")
+
+    try:
         return hf_hub_download(repo_id=repo_id, filename=filename)
     except Exception as e:
         logger.error(f"Error downloading model {filename}: {e}")
