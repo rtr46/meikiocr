@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "meikiocr"
-version = "0.3.4"
+version = "0.3.5"
 authors = [
   { name="rtr46" },
 ]
@@ -21,7 +21,7 @@ dependencies = [
     "numpy",
     "opencv-python-headless",
     "huggingface-hub",
-	"onnxruntime"
+    "onnxruntime"
 ]
 
 [project.urls]
